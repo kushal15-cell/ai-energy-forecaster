@@ -1,0 +1,4 @@
+baseline_energy_kwh,recommendation,change,estimated_energy_kwh,estimated_saving_kwh,saving_percent
+45.80994,Reduce GPU count,128 GPUs → 64 GPUs,19.682678,26.127262,57.034046
+45.80994,Use lower-power GPU,700W GPU → 400W GPU,25.801506,20.008434,43.67706
+45.80994,Reduce compute/FLOPs,"Reduce sequence length, tokens, or model size",42.63304,3.176899,6.9349556

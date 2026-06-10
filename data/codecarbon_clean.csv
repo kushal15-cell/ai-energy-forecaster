@@ -1,0 +1,2 @@
+model_name,model_family,task,train_type,source,label_quality,energy_kwh,co2_kg,duration_seconds,cpu_model,gpu_model,gpu_count,n_params,batch_size,precision,dataset_name
+,,,,,,5.895832994522815e-06,4.206328987445351e-06,2.146071199999824,11th Gen Intel(R) Core(TM) i5-1135G7 @ 2.40GHz,,0,,,fp32,sklearn_digits
