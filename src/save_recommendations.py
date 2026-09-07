@@ -1,12 +1,6 @@
-import pandas as pd
-from recommend_energy_savings import recommend_savings, base_input
+from src.final_feature_engineering import ROOT
+from src.inference import DEFAULT, scenarios
 
-base_energy, recommendations = recommend_savings(base_input)
-
-df = pd.DataFrame(recommendations)
-df.insert(0, "baseline_energy_kwh", base_energy)
-
-df.to_csv("data/recommendations.csv", index=False)
-
-print("Saved data/recommendations.csv")
-print(df)
+if __name__ == "__main__":
+    scenarios(DEFAULT).to_csv(ROOT / "data/recommendations.csv", index=False)
+    print("Saved recomputed default scenarios to data/recommendations.csv")

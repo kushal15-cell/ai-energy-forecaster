@@ -11,7 +11,7 @@ print(df.columns.tolist())
 print("Shape:", df.shape)
 
 # CodeCarbon usually gives emissions in kg CO2eq and energy in kWh
-clean_df = pd.DataFrame()
+clean_df = pd.DataFrame(index=df.index)
 
 clean_df["model_name"] = "RandomForest_digits"
 clean_df["model_family"] = "random_forest"

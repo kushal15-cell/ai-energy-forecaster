@@ -1,0 +1,86 @@
+{
+  "version": "v2_no_duration",
+  "created_utc": "2026-09-07T12:58:12.822354+00:00",
+  "features": [
+    "log_params",
+    "gpu_count",
+    "tdp_w",
+    "batch_size",
+    "log_flops",
+    "log_tokens",
+    "precision",
+    "task",
+    "train_type"
+  ],
+  "seed": 42,
+  "split_counts": {
+    "train": 8400,
+    "synthetic_test": 2400,
+    "calibration": 1200,
+    "external_test": 235
+  },
+  "source_counts": {
+    "synthetic": 12000,
+    "huggingface": 168,
+    "mlperf": 66,
+    "codecarbon": 1
+  },
+  "synthetic_interval": {
+    "nominal_coverage": 0.9,
+    "log10_radius": 0.0951210440150978,
+    "calibration_n": 1200
+  },
+  "training_ranges": {
+    "log_params": [
+      7.913813857679991,
+      10.845098040020462
+    ],
+    "gpu_count": [
+      1.0,
+      256.0
+    ],
+    "tdp_w": [
+      70.0,
+      1200.0
+    ],
+    "batch_size": [
+      8.0,
+      512.0
+    ],
+    "log_flops": [
+      16.390935107103378,
+      22.6232492903979
+    ],
+    "log_tokens": [
+      7.698970013021908,
+      11.000000000004343
+    ]
+  },
+  "categories": {
+    "precision": [
+      "bf16",
+      "fp16",
+      "fp32"
+    ],
+    "task": [
+      "image-classification",
+      "question-answering",
+      "summarization",
+      "text-generation",
+      "training_benchmark",
+      "translation"
+    ],
+    "train_type": [
+      "benchmark_training",
+      "fine-tune",
+      "pre-train"
+    ]
+  },
+  "dataset_sha256": "3d48f4d71170265eee9d98043f4c4e8830f2a2dabc453ffad2ef89f080e16263",
+  "model_sha256": "c7ea6c2e5d55aa411cefbfb7fe0b3d1c45c0bf08afc27cc7dde953d85838a3af",
+  "environment": {
+    "python": "3.14.3",
+    "sklearn": "1.9.0",
+    "xgboost": "3.2.0"
+  }
+}

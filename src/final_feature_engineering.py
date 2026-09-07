@@ -1,132 +1,49 @@
-import pandas as pd
+"""Pre-run features only; provenance is retained solely for evaluation."""
+
+from pathlib import Path
+
 import numpy as np
-from sklearn.preprocessing import LabelEncoder
+import pandas as pd
 
-# Load merged dataset
-df = pd.read_csv("data/merged_dataset.csv")
+ROOT = Path(__file__).resolve().parents[1]
+NUMERIC = ["log_params", "gpu_count", "tdp_w", "batch_size", "log_flops", "log_tokens"]
+CATEGORICAL = ["precision", "task", "train_type"]
+FEATURES = NUMERIC + CATEGORICAL
 
-print("Merged shape:", df.shape)
 
-df = df.drop_duplicates()
+def prepare(df):
+    df = df.drop_duplicates().copy()
+    df["source"] = df["source"].fillna("unknown")
+    df.loc[df.original_file.str.contains("codecarbon", na=False), "source"] = (
+        "codecarbon"
+    )
+    df["row_id"] = df.index.astype(str)
+    for raw, log in [
+        ("n_params", "log_params"),
+        ("estimated_flops", "log_flops"),
+        ("estimated_tokens", "log_tokens"),
+    ]:
+        values = pd.to_numeric(df[raw], errors="coerce")
+        transformed = np.log10(values.where(values >= 0) + 1)
+        # The HF cleaning script saved log10(FLOPs), but omitted raw FLOPs.
+        # Preserve this existing pre-run estimate; do not replace it with an imputed value.
+        if log == "log_flops" and log in df:
+            existing = pd.to_numeric(df[log], errors="coerce")
+            transformed = transformed.fillna(np.log10(10.0**existing + 1))
+        df[log] = transformed
+    for col in ["gpu_count", "tdp_w", "batch_size"]:
+        df[col] = pd.to_numeric(df[col], errors="coerce")
+    for col in CATEGORICAL:
+        df[col] = df[col].fillna("unknown").astype(str).str.lower()
+    df["energy_kwh"] = pd.to_numeric(df.energy_kwh, errors="coerce")
+    df = df[np.isfinite(df.energy_kwh) & (df.energy_kwh > 0)].copy()
+    df["log_energy_kwh"] = np.log10(df.energy_kwh)
+    return df[
+        FEATURES + ["energy_kwh", "log_energy_kwh", "source", "original_file", "row_id"]
+    ]
 
-print("After removing duplicates:", df.shape)
 
-# Keep only usable energy rows
-df = df.dropna(subset=["energy_kwh"])
-df = df[df["energy_kwh"] > 0]
-
-# -----------------------------
-# NUMERIC COLUMNS
-# -----------------------------
-
-numeric_cols = [
-    "n_params",
-    "gpu_count",
-    "tdp_w",
-    "duration_seconds",
-    "batch_size",
-    "estimated_flops",
-    "estimated_tokens",
-    "co2_kg"
-]
-
-for col in numeric_cols:
-
-    # Create missing columns if absent
-    if col not in df.columns:
-        df[col] = np.nan
-
-    # Convert object/mixed values to numeric
-    df[col] = pd.to_numeric(df[col], errors="coerce")
-
-    # Fill missing with median
-    median_val = df[col].median()
-
-    if np.isnan(median_val):
-        median_val = 0
-
-    df[col] = df[col].fillna(median_val)
-
-# -----------------------------
-# CATEGORICAL COLUMNS
-# -----------------------------
-
-categorical_cols = [
-    "task",
-    "train_type",
-    "gpu_model",
-    "source",
-    "label_quality",
-    "precision"
-]
-
-for col in categorical_cols:
-
-    if col not in df.columns:
-        df[col] = "unknown"
-
-    df[col] = df[col].fillna("unknown")
-
-# -----------------------------
-# LOG TRANSFORMS
-# -----------------------------
-
-df["log_energy_kwh"] = np.log10(df["energy_kwh"] + 1e-9)
-
-df["log_params"] = np.log10(df["n_params"] + 1)
-
-df["log_duration"] = np.log10(df["duration_seconds"] + 1)
-
-df["log_flops"] = np.log10(df["estimated_flops"] + 1)
-
-df["log_tokens"] = np.log10(df["estimated_tokens"] + 1)
-
-# -----------------------------
-# LABEL ENCODING
-# -----------------------------
-
-encoders = {}
-
-for col in categorical_cols:
-
-    le = LabelEncoder()
-
-    df[col + "_enc"] = le.fit_transform(df[col].astype(str))
-
-    encoders[col] = le
-
-# -----------------------------
-# FINAL FEATURES
-# -----------------------------
-
-features = [
-    "log_params",
-    "gpu_count",
-    "tdp_w",
-    "batch_size",
-    "log_duration",
-    "log_flops",
-    "log_tokens",
-    "task_enc",
-    "train_type_enc",
-    "gpu_model_enc",
-    "source_enc",
-    "label_quality_enc",
-    "precision_enc"
-]
-
-final_df = df[features + ["energy_kwh", "log_energy_kwh"]]
-
-# -----------------------------
-# SAVE FINAL DATASET
-# -----------------------------
-
-final_df.to_csv("data/final_training_dataset.csv", index=False)
-
-print("\nFinal dataset shape:", final_df.shape)
-
-print("\nFirst 5 rows:")
-print(final_df.head())
-
-print("\nSaved:")
-print("data/final_training_dataset.csv")
+if __name__ == "__main__":
+    data = prepare(pd.read_csv(ROOT / "data/merged_dataset.csv"))
+    data.to_csv(ROOT / "data/final_training_dataset.csv", index=False)
+    print(data.groupby("source").size().to_string())

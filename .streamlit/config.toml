@@ -1,8 +1,9 @@
 [server]
 headless = true
-enableCORS = false
-enableXsrfProtection = false
 
 [theme]
 base = "dark"
-primaryColor = "#FF6B35"
+primaryColor = "#57DBC4"
+backgroundColor = "#0B1220"
+secondaryBackgroundColor = "#142333"
+textColor = "#E8F0F6"

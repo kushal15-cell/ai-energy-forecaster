@@ -1,0 +1,5 @@
+source,log_params,gpu_count,tdp_w,batch_size,log_flops,log_tokens
+codecarbon,1.0,0.0,1.0,1.0,1.0,1.0
+huggingface,0.0,0.0,0.0,1.0,0.0,1.0
+mlperf,1.0,0.0,0.0,1.0,1.0,1.0
+synthetic,0.0,0.0,0.0,0.0,0.0,0.0

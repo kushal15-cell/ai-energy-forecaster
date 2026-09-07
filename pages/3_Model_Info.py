@@ -1,128 +1,95 @@
-import streamlit as st
+import json
+
 import pandas as pd
-import os
+import streamlit as st
 
-st.set_page_config(
-    page_title="Model Info",
-    page_icon="📊",
-    layout="wide"
+from src.final_feature_engineering import ROOT
+from src.inference import artifacts
+from src.ui import comparison, disclosure, setup
+
+setup("Evidence & Model Card", "🔬")
+st.caption("03 / MODEL AUDIT")
+st.title("Evidence before accuracy claims")
+disclosure()
+_, meta = artifacts()
+st.subheader("Where the data comes from")
+st.dataframe(
+    pd.DataFrame(
+        [
+            [
+                "Synthetic",
+                12000,
+                12000,
+                "Physics-inspired simulation; heuristic runtime, noise, and overhead",
+            ],
+            [
+                "Hugging Face",
+                168,
+                168,
+                "Model metadata with heuristic energy labels; not measured training energy",
+            ],
+            [
+                "MLPerf",
+                91,
+                66,
+                "Minimum reported latency × assumed accelerator TDP; incomplete workload metadata",
+            ],
+            [
+                "CodeCarbon",
+                1,
+                1,
+                "One instrumented CPU RandomForest run; not a GPU training benchmark",
+            ],
+        ],
+        columns=["Source", "Raw rows", "Usable labels", "What the label means"],
+    ),
+    hide_index=True,
+    width="stretch",
 )
-
-st.title("📊 Model Info & Methodology")
-
 st.write(
-    "This page explains how the AI Training Energy Forecaster was built, "
-    "what data sources it uses, and which features influence predictions."
+    "12,260 raw rows; 12,235 usable positive energy labels. Synthetic share: 97.88% raw, 98.08% usable. All 235 usable external rows are reserved for evaluation. The 25 other MLPerf rows have no usable energy label."
 )
-
-st.divider()
-
-st.subheader("Dataset Sources")
-
-source_df = pd.DataFrame([
-    {
-        "Source": "MLPerf benchmark-derived rows",
-        "Purpose": "Adds industry benchmark hardware/runtime patterns",
-        "Label Type": "Estimated from latency + accelerator power"
-    },
-    {
-        "Source": "CodeCarbon measured experiments",
-        "Purpose": "Adds real measured local training energy/emissions",
-        "Label Type": "Measured"
-    },
-    {
-        "Source": "Hugging Face metadata",
-        "Purpose": "Adds model architecture and task variety",
-        "Label Type": "Estimated / metadata-derived"
-    },
-    {
-        "Source": "Synthetic physics-based simulations",
-        "Purpose": "Adds scale and coverage for many training configurations",
-        "Label Type": "Simulated"
-    }
-])
-
-st.dataframe(source_df, use_container_width=True)
-
-st.divider()
-
-st.subheader("Model Performance")
-
-metrics_df = pd.DataFrame([{
-    "Model": "XGBoost Regressor",
-    "Target": "log_energy_kwh",
-    "MAE": 0.0462,
-    "RMSE": 0.0645,
-    "R² Score": 0.9948
-}])
-
-st.dataframe(metrics_df, use_container_width=True)
-
-st.info(
-    "The high R² score is expected because part of the dataset is physics-based synthetic data. "
-    "The model should be interpreted as a planning estimator, not an exact real-world power meter."
+st.subheader("Before / after / baseline")
+results = comparison()
+st.dataframe(results, hide_index=True, width="stretch")
+st.caption(
+    "R² and RMSE with suffix log10 use log₁₀(kWh). MAE is in kWh; r2_kwh uses the original scale. Single-row R² is undefined. The archived score is replayed on the original blended split; it is not directly comparable to the new external holdout."
 )
-
-st.divider()
-
-st.subheader("Feature Importance")
-
-if os.path.exists("models/shap_bar.png"):
-    st.image(
-        "models/shap_bar.png",
-        caption="SHAP feature importance from the trained XGBoost model"
-    )
-else:
-    st.warning("SHAP image not found. Run src/shap_analysis.py first.")
-
-st.divider()
-
-st.subheader("Most Important Features")
-
-feature_df = pd.DataFrame([
-    {
-        "Feature": "gpu_count",
-        "Meaning": "Number of GPUs used",
-        "Why it matters": "More GPUs usually increase total electricity consumption."
-    },
-    {
-        "Feature": "tdp_w",
-        "Meaning": "GPU power rating in watts",
-        "Why it matters": "Higher-TDP GPUs consume more power."
-    },
-    {
-        "Feature": "log_flops",
-        "Meaning": "Log of estimated training compute",
-        "Why it matters": "More compute operations require more energy."
-    },
-    {
-        "Feature": "log_duration",
-        "Meaning": "Log of training runtime",
-        "Why it matters": "Longer training consumes more electricity."
-    }
-])
-
-st.dataframe(feature_df, use_container_width=True)
-
-st.divider()
-
-st.subheader("Project Methodology")
-
-st.write("""
-The system follows this pipeline:
-
-1. Collect data from MLPerf-style benchmark exports, CodeCarbon runs, Hugging Face metadata, and synthetic simulation.
-2. Clean and standardize all sources into one unified dataset.
-3. Create log-transformed features such as model size, FLOPs, tokens, and duration.
-4. Train an XGBoost regression model to predict `log_energy_kwh`.
-5. Convert the prediction back to kWh.
-6. Estimate cost and CO₂ emissions.
-7. Use SHAP to explain which features drive the prediction.
-""")
-
-st.subheader("Core Innovation")
-
-st.success(
-    "Most tools measure energy after training starts. "
-    "This system predicts energy before GPU execution, helping users plan cost and sustainability impact proactively."
+st.write(
+    "The corrected model fits the synthetic generator well but fails external validation. External log-energy performance is worse than the synthetic-training median baseline. Missing workload fields, estimated labels, and domain mismatch prevent a real-world accuracy claim."
+)
+st.subheader("What changed")
+st.markdown(
+    "- Removed duration and outcome-derived inputs. Source and label quality are evaluation metadata only.\n- Fit imputation and categorical encoding on synthetic training rows only; inference uses the saved pipeline.\n- Reserved 8,400 synthetic rows for training, 1,200 for calibration, and 2,400 for testing.\n- Archived the old model and saved split IDs, source metrics, predictions, hashes, and package versions.\n- Replaced hard-coded results, confidence bands, and savings with actual model outputs."
+)
+st.subheader("Uncertainty under distribution shift")
+coverage = results[
+    (results.version == "v2_no_duration")
+    & results.evaluation.isin(["synthetic_holdout", "external_all"])
+][["evaluation", "interval_coverage"]]
+st.dataframe(coverage, hide_index=True)
+st.write(
+    "Split conformal intervals target 90% coverage under exchangeability with synthetic calibration data. Their external coverage is poor. They quantify simulator residuals, not missing real-world uncertainty."
+)
+st.subheader("Global feature attribution")
+for name in ["shap_bar.png", "shap_summary.png"]:
+    path = ROOT / "models" / name
+    if path.exists():
+        st.image(str(path), width="stretch")
+st.caption(
+    "Generated from corrected-model synthetic holdout rows. SHAP explains predictions, not causation or validation. Plain-language notes are deterministic and require no API key."
+)
+with st.expander("Reproducibility manifest"):
+    st.json(meta)
+st.download_button(
+    "Download model manifest",
+    json.dumps(meta, indent=2),
+    "model_manifest.json",
+    "application/json",
+)
+st.download_button(
+    "Download evaluation table",
+    results.to_csv(index=False),
+    "model_comparison.csv",
+    "text/csv",
 )
